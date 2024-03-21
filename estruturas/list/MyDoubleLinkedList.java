@@ -9,12 +9,13 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
+public class MyDoubleLinkedList<E> implements MyInterfaceLinkedList<E> {
 
     private class Node {
 
         E data;
         Node next;
+        Node prev;
 
         Node(E data) {
             this.data = data;
@@ -29,23 +30,28 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
             this.next = next;
         }
 
+        Node(E data, Node prev, Node next) {
+            this.data = data;
+            this.prev = prev;
+            this.next = next;
+        }
     }
 
     public class ListIterator implements java.util.ListIterator<E> {
 
-        private final Node prev;
+        private Node prev;
         private Node p;
         private boolean modified;
 
         public ListIterator() {
-            prev = new Node(head);
-            p = prev;
+            prev = null;
+            p = head;
             modified = false;
         }
 
         @Override
         public boolean hasNext() {
-            return p.next != null;
+            return p != null;
         }
 
         @Override
@@ -53,14 +59,16 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
             if (!hasNext()) {
                 throw new NoSuchElementException("Não há próximo elemento na lista.");
             }
+
+            prev = p;
             p = p.next;
             modified = false;
-            return p.data;
+            return prev.data;
         }
 
         @Override
         public boolean hasPrevious() {
-            return p != prev;
+            return prev != null;
         }
 
         @Override
@@ -68,31 +76,36 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
             if (!hasPrevious()) {
                 throw new NoSuchElementException("Não há elemento anterior na lista.");
             }
+
+            p = prev;
+            prev = (p == head) ? null : p.prev;
             modified = false;
-            if (p == head) {
-                p = prev;
-                return head.data;
-            }
-            Node temp = head;
-            while (temp.next != p) temp = temp.next;
-            p = temp;
-            return p.next.data;
+            return p.data;
         }
 
         @Override
         public void add(E element) {
+            Node newNode = new Node(element);
             if (p == null) {
-                throw new IllegalStateException("O método add() não pode ser chamado quando não há elemento atual.");
+                if (tail != null) {
+                    tail.next = newNode;
+                    newNode.prev = tail;
+                    tail = newNode;
+                } else {
+                    head = tail = newNode;
+                }
+            } else {
+                newNode.next = p;
+                newNode.prev = prev;
+                if (prev != null) {
+                    prev.next = newNode;
+                } else {
+                    head = newNode;
+                }
+                p.prev = newNode;
             }
-            Node n = new Node(element);
-            if (p == prev) {
-                n.next = head;
-                head = n;    
-            } else if (p == tail) {
-                tail = n;
-            }
-            p.next = n;
-            p = n;
+
+            prev = newNode;
             size++;
             modified = true;
         }
@@ -113,47 +126,38 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
             if (modified) {
                 throw new IllegalStateException("O método remove() não pode ser chamado logo após uma operação que modifique a lista. Chame next() ou previous() antes.");
             }
+
             if (p == null) {
                 throw new IllegalStateException("Nenhum elemento foi retornado por next() ou previous().");
             }
-            if (p == head) {
-                if (p == tail) {
-                    head = tail = null;
-                } else {
-                    Node temp = head;
-                    head = head.next;
-                    prev.next = head;
-                    temp.next = null;
-                }
-                p = prev;
-            } else if (p == tail) {
-                p = head;
-                tail = head;
+
+            Node nextNode = p.next;
+            if (prev != null) {
+                prev.next = nextNode;
             } else {
-                Node temp = p.next;
-                p.data = temp.data;
-                temp.next = null;
-                if (temp == tail) {
-                    tail = p;
-                }
-                
-                temp = head;
-                while (temp.next != p) temp = temp.next;
-                p = temp;
+                head = nextNode;
             }
-            
-            modified = true;
+
+            if (nextNode != null) {
+                nextNode.prev = prev;
+            } else {
+                tail = prev;
+            }
+
+            p = nextNode;
             size--;
+            modified = true;
         }
 
+        // Métodos nextIndex() e previousIndex() não são suportados em uma lista duplamente encadeada
         @Override
         public int nextIndex() {
-            throw new UnsupportedOperationException("Método nextIndex() não é suportado em um ListIterator de uma lista encadeada simples.");
+            throw new UnsupportedOperationException("Método nextIndex() não é suportado em um ListIterator de uma lista encadeada dupla.");
         }
 
         @Override
         public int previousIndex() {
-            throw new UnsupportedOperationException("Método previousIndex() não é suportado em um ListIterator de uma lista encadeada simples.");
+            throw new UnsupportedOperationException("Método previousIndex() não é suportado em um ListIterator de uma lista encadeada dupla.");
         }
     }
 
@@ -161,7 +165,7 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
     private Node head;
     private Node tail;
 
-    public MyLinkedList() {
+    public MyDoubleLinkedList() {
     }
 
     @Override
@@ -173,8 +177,8 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
     @Override
     public void addFirst(E value) {
         if (!isEmpty()) {
-            Node newNode = new Node(value, head);
-            head = newNode;
+            head.prev = new Node(value, head);
+            head = head.prev;
         } else {
             head = new Node(value);
             tail = head;
@@ -185,8 +189,10 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
     @Override
     public void addLast(E value) {
         if (!isEmpty()) {
-            tail.next = new Node(value);
-            tail = tail.next;
+            Node n = new Node(value);
+            n.prev = tail;
+            tail.next = n;
+            tail = n;
         } else {
             tail = new Node(value);
             head = tail;
@@ -210,8 +216,10 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
             E element = (E) obj;
             if (head.data.equals(element)) {
                 removeFirst();
+                return true;
             } else if (tail.data.equals(element)) {
                 removeLast();
+                return true;
             } else {
                 Node p = head;
                 while (p != null && !p.data.equals(element)) {
@@ -222,12 +230,21 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
                     return false;
                 }
 
-                Node d = p.next;
-                p.next = d.next;
-                d.next = null;
+                Node previousNode = p.prev;
+                Node nextNode = p.next;
+
+                previousNode.next = nextNode;
+                if (nextNode != null) {
+                    nextNode.prev = previousNode;
+                } else {
+                    tail = previousNode;
+                }
+
+                p.prev = null;
+                p.next = null;
+                size--;
+                return true;
             }
-            size--;
-            return true;
         }
         return false;
     }
@@ -235,17 +252,17 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
     @Override
     public E removeFirst() {
         if (!isEmpty()) {
-            E removed = head.data;
+            Node p = head;
             if (head != tail) {
-                Node p = head;
                 head = head.next;
+                head.prev = null;
                 p.next = null;
             } else {
                 head = null;
                 tail = null;
             }
             size--;
-            return removed;
+            return p.data;
         }
         return null;
     }
@@ -253,20 +270,17 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
     @Override
     public E removeLast() {
         if (!isEmpty()) {
-            E removed = tail.data;
+            Node p = tail;
             if (head != tail) {
-                Node p = head;
-                while (p.next != tail) {
-                    p = p.next;
-                }
-                tail = p;
-                p.next = null;
+                tail = tail.prev;
+                tail.next = null;
+                p.prev = null;
             } else {
                 head = null;
                 tail = null;
             }
             size--;
-            return removed;
+            return p.data;
         }
         return null;
     }
@@ -274,11 +288,15 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
     @Override
     public void clear() {
         if (!isEmpty()) {
-            Node p = head;
-            while (p != null) {
-                Node next = p.next;
-                p.next = null;
-                p = next;
+            if (head != tail) {
+                Node p = head;
+                Node n = head.next;
+                while (n != null) {
+                    n.prev = null;
+                    p.next = null;
+                    p = n;
+                    n = n.next;
+                }
             }
             head = tail = null;
             size = 0;
@@ -313,9 +331,10 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
             }
 
             if (p != null) {
-                Node newNode = new Node(newValue);
-                newNode.next = p.next;
-                p.next = newNode;
+                Node n = new Node(newValue, p, p.next);
+                p.next = n;
+                p = n.next;
+                p.prev = n;
             }
         }
     }
@@ -332,25 +351,43 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
 
     @Override
     public boolean contains(Object o) {
-        Node p = head;
-        while (p != tail) {
-            if (p.data.equals(o)) {
+        E obj = (E) o;
+        if (isEmpty() || o == null || !(obj instanceof E)) {
+            return false;
+        }
+
+        if (head == tail) {
+            return head.data.equals(obj);
+        }
+
+        Node n = head;
+        Node p = tail;
+
+        int comparations = (size % 2 == 0 ? (size / 2) - 1 : size / 2);
+        for (int i = 0; i <= comparations; i++) {
+            if (n.data.equals(obj) || p.data.equals(obj)) {
                 return true;
             }
-            p = p.next;
+            n = n.next;
+            p = p.prev;
         }
         return false;
     }
 
     @Override
     public E search(E value) {
-        if (head != null) {
-            Node p = head;
-            while (p != null) {
-                if (p.data.equals(value)) {
+        if (!isEmpty()) {
+            Node n = head;
+            Node p = tail;
+            int comparations = (size % 2 == 0 ? (size / 2) - 1 : size / 2);
+            for (int i = 0; i <= comparations; i++) {
+                if (n.data.equals(value)) {
+                    return n.data;
+                } else if (p.data.equals(value)) {
                     return p.data;
                 }
-                p = p.next;
+                n = n.next;
+                p = p.prev;
             }
         }
         return null;
@@ -374,24 +411,13 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
     public void showReverse() {
         StringBuilder sb = new StringBuilder();
         if (!isEmpty()) {
-            Node r = new Node(head.data);
-            Node reverse = r;
-            Node p = head.next;
-
+            Node p = tail;
             while (p != null) {
-                reverse.next = new Node(p.data);
-                reverse = reverse.next;
-                p = p.next;
-            }
-
-            p = head;
-            while (p != null) {
-                sb.append(r.data);
-                if (p != tail) {
+                sb.append(p.data);
+                if (p.prev != null) {
                     sb.append(" -> ");
                 }
-                p = p.next;
-                r = r.next;
+                p = p.prev;
             }
         }
         System.out.println("[" + sb + "]");
@@ -433,7 +459,7 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
 
     @Override
     public List<E> subList(E from, E to) {
-        List<E> subLista = new MyLinkedList<>();
+        List<E> subLista = new MyDoubleLinkedList<>();
 
         if (isEmpty()) {
             return subLista;
@@ -491,11 +517,16 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
             if (p != null) {
                 for (E element : c) {
                     Node newNode = new Node(element);
+                    newNode.prev = p;
                     newNode.next = p.next;
-                    p.next = newNode;
-                    if (p == tail) {
+
+                    if (p.next != null) {
+                        p.next.prev = newNode;
+                    } else {
                         tail = newNode;
                     }
+
+                    p.next = newNode;
                     p = newNode;
                     size++;
                 }
@@ -546,8 +577,9 @@ public class MyLinkedList<E> implements MyInterfaceLinkedList<E> {
 
             @Override
             public E next() {
-                if (!hasNext())
+                if (!hasNext()) {
                     throw new NoSuchElementException("Não há próximo elemento.");
+                }
                 p = p.next;
                 return p.data;
             }

@@ -1,7 +1,6 @@
 package estruturas.list;
 
 import java.util.ListIterator;
-import interfaces.MyInterfaceLinkedList;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.EOFException;
@@ -21,10 +20,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import interfaces.MyInterfaceLinkedList;
 
 public class AplicacoesLinkedList {
 
-    public static class Carro implements Comparable<Carro> {
+    public static class Carro implements Comparable<Carro>, Serializable {
 
         private String placa;
         private String nome;
@@ -107,23 +107,23 @@ public class AplicacoesLinkedList {
         
         @Override
         public boolean equals(Object o) {
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            return this == o || Objects.equals(this.palavra, ((Token) o).palavra);
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Token token = (Token) o;
+            return Objects.equals(this.palavra, token.palavra);
         }
 
         @Override
         public int hashCode() {
             int hash = 5;
-            hash = 23 * hash + Objects.hashCode(this.palavra);
+            hash = 79 * hash + Objects.hashCode(this.palavra);
             return hash;
         }
     }
 
     public static void main(String[] args) {
         // Testando métodos de lista encadeada simples
-        var carros = new MyLinkedList<Carro>();
+        var carros = new MySinglyLinkedList<Carro>();
         aplicarMetodos(carros);
         
         // Contar palavras de um arquivo de texto com lista encadeada simples
@@ -138,15 +138,21 @@ public class AplicacoesLinkedList {
         
         // Salvando em arquivo binário
         String arquivoBin = "src/arquivos/palavrasContadas.bin";
+        String arquivoTxt = "src/arquivos/palavrasContadas.txt";
         escreverArquivoBin(palavras, arquivoBin);
         
         // Lendo o arquivo binário
         List<Token> listaBin = lerArquivoBin(arquivoBin);
         
+        StringBuilder txt = new StringBuilder();
         System.out.println();
         listaBin.forEach(tk -> {
+            txt.append(tk.palavra).append(": ").append(tk.getQuantidade()).append("\n");
             System.out.println(tk.palavra + ": " + tk.getQuantidade());
         });
+        
+        // Salvando em arquivo de texto
+        excreverArquivoTexto(txt.toString(), arquivoTxt);
     }
 
     public static void aplicarMetodos(List<Carro> lista) {
@@ -228,7 +234,7 @@ public class AplicacoesLinkedList {
     }
 
     public static <E> List<E> lerArquivoBin(String arquivo) {
-        List<E> objetos = new MyLinkedList<>();
+        List<E> objetos = new MySinglyLinkedList<>();
 
         try (var ois = new ObjectInputStream(new FileInputStream(arquivo))) {
             while (true) {
@@ -260,21 +266,20 @@ public class AplicacoesLinkedList {
     }
     
     public static List<Token> contarPalavras(String texto) {
-        var contagemPalavras = new MyLinkedList<Token>();
+        var contagemPalavras = new MySinglyLinkedList<Token>();
 
-        String txt = texto.replaceAll("[.,();]", "");
+        String txt = texto.replaceAll("[.,();]", "").toLowerCase();
         for (String palavra : txt.split(" ")) {
-            palavra = palavra.toLowerCase();
-
+            if (palavra.isEmpty()) continue;
             Token token = new Token(palavra);
-            
+
             if (contagemPalavras.contains(token)) {
                 contagemPalavras.search(token).incrementarQuantidade();
             } else {
                 contagemPalavras.addLast(token);
             }
         }
-        
+
         return contagemPalavras;
     }
 

@@ -23,7 +23,7 @@ public class TesteListIterator {
     }
     
     public static void meuIterator() {
-        MyInterfaceLinkedList<Integer> lista = new MyLinkedList<>();
+        MyInterfaceLinkedList<Integer> lista = new MySinglyLinkedList<>();
         lista.addAll(java.util.Arrays.asList(1, 2, 3, 4));
         
         java.util.ListIterator<Integer> it = lista.listIterator();
